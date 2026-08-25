@@ -1,0 +1,31 @@
+include /etc/openldap/schema/core.schema
+include /etc/openldap/schema/cosine.schema
+include /etc/openldap/schema/inetorgperson.schema
+
+pidfile /run/openldap/slapd.pid
+argsfile /run/openldap/slapd.args
+
+modulepath /usr/lib/openldap
+moduleload back_mdb
+
+access to attrs=userPassword
+    by self write
+    by anonymous auth
+    by dn.exact="cn=admin,@BASE_DN@" manage
+    by group.exact="cn=admins,ou=groups,@BASE_DN@" write
+    by * none
+access to *
+    by self write
+    by dn.exact="cn=admin,@BASE_DN@" manage
+    by group.exact="cn=admins,ou=groups,@BASE_DN@" write
+    by * read
+
+database mdb
+suffix "@BASE_DN@"
+rootdn "cn=admin,@BASE_DN@"
+rootpw @ROOT_PASSWORD_HASH@
+directory /var/lib/ldap
+
+maxsize 1073741824
+index objectClass eq
+index uid,mail eq

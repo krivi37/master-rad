@@ -1,0 +1,46 @@
+dn: uid=miroslav,ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: miroslav
+cn: Miroslav
+sn: Jovanovic
+mail: miroslav@rti.etf.bg.ac.rs
+userPassword: {SSHA}ersCqq/DvbaBdl+RCEKIN6DbYkKlfs+MJRAWKw==
+
+dn: uid=milica,ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: milica
+cn: Milica
+sn: Nenadovic
+mail: milica@rti.etf.bg.ac.rs
+userPassword: {SSHA}D8aD7If/gXtuzodbUJx3AyoPu1OtkTFCU0ydSA==
+
+dn: uid=keycloak,ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: keycloak
+cn: Keycloak Service
+sn: Service
+mail: keycloak@rti.etf.bg.ac.rs
+userPassword: {SSHA}TLrA8GIkZsozTDKHBw4Ar1OaIb8IxsFq
+
+# Miroslav is allowed to invoke the protected API.
+dn: cn=api-access,ou=groups,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: groupOfNames
+cn: api-access
+member: uid=miroslav,ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+
+# Keycloak service account is a member of the admins group.
+dn: cn=admins,ou=groups,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: groupOfNames
+cn: admins
+member: uid=keycloak,ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs

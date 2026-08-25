@@ -1,0 +1,5 @@
+# Force LF for shell scripts and container assets so they run inside Linux
+# containers even when the repo is cloned on Windows.
+*.sh text eol=lf
+*.template text eol=lf
+entrypoint.sh text eol=lf

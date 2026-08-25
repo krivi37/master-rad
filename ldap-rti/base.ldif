@@ -1,0 +1,16 @@
+dn: dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+dc: rti
+o: RTI ETF BG
+
+dn: ou=users,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=rti,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: organizationalUnit
+ou: groups

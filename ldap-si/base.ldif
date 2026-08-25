@@ -1,0 +1,16 @@
+dn: dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+dc: si
+o: SI ETF BG
+
+dn: ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: organizationalUnit
+ou: groups

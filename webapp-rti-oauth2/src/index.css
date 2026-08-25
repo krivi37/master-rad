@@ -1,0 +1,176 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #38bdf8;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.kv {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.kv th {
+  text-align: left;
+  width: 120px;
+  padding: 0.25rem 0.5rem 0.25rem 0;
+  color: #94a3b8;
+  font-weight: 600;
+  vertical-align: top;
+}
+
+.kv td {
+  padding: 0.25rem 0;
+  word-break: break-all;
+}
+
+.tokens {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.token-raw {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  resize: vertical;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.token-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.token-decoded {
+  overflow-x: auto;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #334155;
+  background: #334155;
+  color: #e2e8f0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+button:hover {
+  background: #475569;
+}
+
+button.primary {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: white;
+  font-weight: 600;
+}
+
+button.primary:hover {
+  background: #0369a1;
+}
+
+a {
+  color: #38bdf8;
+}
+
+.forbidden {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.api-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+.api-result {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.api-result p {
+  margin: 0 0 0.5rem;
+}
+
+.api-result pre {
+  margin: 0;
+}
+
+.api-ok {
+  border: 1px solid #15803d;
+  background: rgba(22, 101, 52, 0.25);
+}
+
+.api-forbidden {
+  border: 1px solid #b91c1c;
+  background: rgba(153, 27, 27, 0.25);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}

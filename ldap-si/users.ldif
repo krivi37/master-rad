@@ -1,0 +1,46 @@
+dn: uid=sonja,ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: sonja
+cn: Sonja
+sn: Vuckovic
+mail: sonja@si.etf.bg.ac.rs
+userPassword: {SSHA}/32kvUG0YJsxM6lHr7MYDxNrXuWALChtim7Y3A==
+
+dn: uid=marko,ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: marko
+cn: Marko
+sn: Kraljevic
+mail: marko@si.etf.bg.ac.rs
+userPassword: {SSHA}vr4D3KZYnke+8QOXSwsuJgmfHoslRvstbHGkaw==
+
+dn: uid=keycloak,ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+uid: keycloak
+cn: Keycloak Service
+sn: Service
+mail: keycloak@si.etf.bg.ac.rs
+userPassword: {SSHA}TLrA8GIkZsozTDKHBw4Ar1OaIb8IxsFq
+
+# Sonja is allowed to invoke the protected API.
+dn: cn=api-access,ou=groups,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: groupOfNames
+cn: api-access
+member: uid=sonja,ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+
+# Keycloak service account is a member of the admins group.
+dn: cn=admins,ou=groups,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
+objectClass: top
+objectClass: groupOfNames
+cn: admins
+member: uid=keycloak,ou=users,dc=si,dc=etf,dc=bg,dc=ac,dc=rs
