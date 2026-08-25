@@ -39,6 +39,11 @@ SAML_IDP_ALIAS="saml-si"
 # so brokered SI users who hold it can invoke the OAuth 2.0 API from RTI.
 API_REQUIRED_GROUP="${API_REQUIRED_GROUP:-api-access}"
 
+# Whether a brokered logout in one realm cascades to the other (cross-realm SLO).
+# off (default) isolates logout to the initiating realm to avoid the
+# bidirectional-brokering logout loop; on restores cross-realm single logout.
+KC_FEDERATION_LOGOUT_PROPAGATION="${KC_FEDERATION_LOGOUT_PROPAGATION:-off}"
+
 wait_for_admin_login() {
     local server="$1"
     local config_file="$2"
@@ -112,6 +117,12 @@ ensure_oidc_identity_provider() {
 
     local base="${remote_host}/realms/${remote_realm}"
 
+    # Only forward logout upstream when cross-realm propagation is enabled.
+    local logout_url=""
+    if [ "${KC_FEDERATION_LOGOUT_PROPAGATION}" = "on" ]; then
+        logout_url="${base}/protocol/openid-connect/logout"
+    fi
+
     kc "${cfg}" create identity-provider/instances -r "${realm}" \
         -s alias="${alias}" \
         -s displayName="Login with RTI (OIDC)" \
@@ -126,7 +137,7 @@ ensure_oidc_identity_provider() {
         -s config.authorizationUrl="${base}/protocol/openid-connect/auth" \
         -s config.tokenUrl="${base}/protocol/openid-connect/token" \
         -s config.userInfoUrl="${base}/protocol/openid-connect/userinfo" \
-        -s config.logoutUrl="${base}/protocol/openid-connect/logout" \
+        -s config.logoutUrl="${logout_url}" \
         -s config.jwksUrl="${base}/protocol/openid-connect/certs" \
         -s config.useJwksUrl=true \
         -s config.validateSignature=true \
@@ -158,6 +169,14 @@ ensure_saml_identity_provider() {
 
     local saml_endpoint="${remote_host}/realms/${remote_realm}/protocol/saml"
 
+    # Only forward SAML single logout upstream when cross-realm propagation is enabled.
+    local slo_url=""
+    local post_logout="false"
+    if [ "${KC_FEDERATION_LOGOUT_PROPAGATION}" = "on" ]; then
+        slo_url="${saml_endpoint}"
+        post_logout="true"
+    fi
+
     kc "${cfg}" create identity-provider/instances -r "${realm}" \
         -s alias="${alias}" \
         -s displayName="Login with SI (SAML)" \
@@ -165,11 +184,11 @@ ensure_saml_identity_provider() {
         -s enabled=true \
         -s trustEmail=true \
         -s config.singleSignOnServiceUrl="${saml_endpoint}" \
-        -s config.singleLogoutServiceUrl="${saml_endpoint}" \
+        -s config.singleLogoutServiceUrl="${slo_url}" \
         -s config.nameIDPolicyFormat="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent" \
         -s config.postBindingResponse=true \
         -s config.postBindingAuthnRequest=true \
-        -s config.postBindingLogout=true \
+        -s config.postBindingLogout="${post_logout}" \
         -s config.wantAuthnRequestsSigned=false \
         -s config.wantAssertionsSigned=false \
         -s config.validateSignature=false \

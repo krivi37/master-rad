@@ -161,6 +161,7 @@ services:
       KEYCLOAK_A_HOSTNAME: ${KEYCLOAK_A_HOSTNAME}
       KEYCLOAK_B_HOSTNAME: ${KEYCLOAK_B_HOSTNAME}
       API_REQUIRED_GROUP: ${API_REQUIRED_GROUP:-api-access}
+      KC_FEDERATION_LOGOUT_PROPAGATION: ${KC_FEDERATION_LOGOUT_PROPAGATION:-off}
     volumes:
       - ./keycloak/scripts:/opt/lab-scripts:ro
     networks:
