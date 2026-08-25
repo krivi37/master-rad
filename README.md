@@ -32,3 +32,5 @@ Now you can connect to various endpoints:
   c. KC_FEDERATION_MODE=preconfigured/manual - Controls whether federation exists between the two Keycloak instances
 
   You can use the same endpoints to connect. If you want to create LDAP users, console needs to be used from the container since no built in portal exists for this.
+
+Detailed manual setup steps in Serbian are in ManualSetupPortal.sr.md and ManualSetupSteps.sr.md. First one is for GUI experience, the second one is the setup using scripts.
