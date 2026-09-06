@@ -22,9 +22,15 @@ CFG_B=/tmp/kcadm-b.config
 KEYCLOAK_A_REALM="${KEYCLOAK_A_REALM:-rti}"
 KEYCLOAK_B_REALM="${KEYCLOAK_B_REALM:-si}"
 KEYCLOAK_LDAP_BIND_PASSWORD="${KEYCLOAK_LDAP_BIND_PASSWORD:-keycloak123}"
-WEBAPP_A_REDIRECT_URI="${WEBAPP_A_REDIRECT_URI:-http://localhost:3000/*}"
-WEBAPP_B_ACS_URL="${WEBAPP_B_ACS_URL:-http://localhost:4000/saml/acs}"
-WEBAPP_B_SLS_URL="${WEBAPP_B_SLS_URL:-http://localhost:4000/saml/sls}"
+
+# Total number of instances of each web app (1 = base app only). Each instance is
+# registered as its OWN Keycloak client (RTI: webapp-rti-oauth2-1, -2, ...; SI:
+# webapp-si-saml-1, -2, ...) so SSO is demonstrated across DIFFERENT applications
+# in the same realm via delegated auth, not across copies of one client. Instances
+# run on incrementing host ports (RTI: 3000, 3001, ...; SI: 4000, 4001, ...) and
+# each client's own redirect / ACS URL is registered below.
+WEBAPP_RTI_COPIES="${WEBAPP_RTI_COPIES:-1}"
+WEBAPP_SI_COPIES="${WEBAPP_SI_COPIES:-1}"
 
 # Audience stamped into Web App A access tokens so the OAuth 2.0 API can verify it.
 API_AUDIENCE="${API_AUDIENCE:-oauth2-api}"
@@ -33,6 +39,15 @@ API_AUDIENCE="${API_AUDIENCE:-oauth2-api}"
 # Web Application B is demonstrable; raise for a more realistic setup.
 SSO_SESSION_IDLE_TIMEOUT="${SSO_SESSION_IDLE_TIMEOUT:-300}"
 SSO_SESSION_MAX_LIFESPAN="${SSO_SESSION_MAX_LIFESPAN:-300}"
+
+# Join the given arguments into a JSON array of quoted strings.
+build_json_array() {
+    local out="" item
+    for item in "$@"; do
+        out+=",\"${item}\""
+    done
+    echo "[${out#,}]"
+}
 
 wait_for_admin_login() {
     local server="$1"
@@ -67,6 +82,13 @@ get_client_uuid() {
     kc "${cfg}" get clients -r "${realm}" -q clientId="${client_id}" --fields id --format csv --noquotes 2>/dev/null | tr -d '\r' | head -n1
 }
 
+# True when a protocol mapper named $4 already exists on client UUID $3.
+client_mapper_exists() {
+    local cfg="$1" realm="$2" client_uuid="$3" name="$4"
+    kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
+        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""
+}
+
 ensure_saml_client_property_mapper() {
     local cfg="$1"
     local realm="$2"
@@ -75,8 +97,7 @@ ensure_saml_client_property_mapper() {
     local user_property="$5"
     local saml_attr="$6"
 
-    if kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""; then
+    if client_mapper_exists "${cfg}" "${realm}" "${client_uuid}" "${name}"; then
         echo "SAML client mapper ${name} already exists in realm ${realm}"
         return 0
     fi
@@ -209,25 +230,33 @@ ensure_oidc_client() {
     local cfg="$1"
     local realm="$2"
     local client_id="$3"
+    local redirect_uris="$4"
+    local web_origins="$5"
 
-    if kc "${cfg}" get clients -r "${realm}" -q clientId="${client_id}" | grep -Eq "\"clientId\"[[:space:]]*:[[:space:]]*\"${client_id}\""; then
-        echo "OIDC client ${client_id} already exists in realm ${realm}"
-        return 0
+    local uuid
+    uuid=$(get_client_uuid "${cfg}" "${realm}" "${client_id}")
+    if [ -z "${uuid}" ]; then
+        kc "${cfg}" create clients -r "${realm}" \
+            -s clientId="${client_id}" \
+            -s enabled=true \
+            -s protocol=openid-connect \
+            -s publicClient=true \
+            -s standardFlowEnabled=true \
+            -s directAccessGrantsEnabled=false \
+            -s 'redirectUris='"${redirect_uris}" \
+            -s 'webOrigins='"${web_origins}" \
+            -s 'attributes."pkce.code.challenge.method"=S256' \
+            -s 'attributes."post.logout.redirect.uris"=+' >/dev/null
+        echo "OIDC client ${client_id} created in realm ${realm}"
+    else
+        # Sync redirect URIs / web origins so newly requested copies are accepted.
+        kc "${cfg}" update "clients/${uuid}" -r "${realm}" \
+            -s 'redirectUris='"${redirect_uris}" \
+            -s 'webOrigins='"${web_origins}" \
+            -s 'attributes."pkce.code.challenge.method"=S256' \
+            -s 'attributes."post.logout.redirect.uris"=+' >/dev/null
+        echo "OIDC client ${client_id} updated in realm ${realm} (redirect URIs synced)"
     fi
-
-    kc "${cfg}" create clients -r "${realm}" \
-        -s clientId="${client_id}" \
-        -s enabled=true \
-        -s protocol=openid-connect \
-        -s publicClient=true \
-        -s standardFlowEnabled=true \
-        -s directAccessGrantsEnabled=false \
-        -s 'redirectUris=["'"${WEBAPP_A_REDIRECT_URI}"'"]' \
-        -s 'webOrigins=["http://localhost:3000"]' \
-        -s 'attributes."pkce.code.challenge.method"=S256' \
-        -s 'attributes."post.logout.redirect.uris"="http://localhost:3000/*"' >/dev/null
-
-    echo "OIDC client ${client_id} created in realm ${realm}"
 }
 
 ensure_oidc_audience_mapper() {
@@ -237,8 +266,7 @@ ensure_oidc_audience_mapper() {
     local name="$4"
     local audience="$5"
 
-    if kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""; then
+    if client_mapper_exists "${cfg}" "${realm}" "${client_uuid}" "${name}"; then
         echo "Audience mapper ${name} already exists in realm ${realm}"
         return 0
     fi
@@ -261,8 +289,7 @@ ensure_group_membership_mapper() {
     local name="$4"
     local claim="$5"
 
-    if kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""; then
+    if client_mapper_exists "${cfg}" "${realm}" "${client_uuid}" "${name}"; then
         echo "Group membership mapper ${name} already exists in realm ${realm}"
         return 0
     fi
@@ -284,17 +311,20 @@ ensure_saml_client() {
     local cfg="$1"
     local realm="$2"
     local client_id="$3"
+    local redirect_uris="$4"
+    local acs_url="$5"
+    local sls_url="$6"
 
-    if kc "${cfg}" get clients -r "${realm}" -q clientId="${client_id}" | grep -Eq "\"clientId\"[[:space:]]*:[[:space:]]*\"${client_id}\""; then
-        echo "SAML client ${client_id} already exists in realm ${realm}"
-    else
+    local client_uuid
+    client_uuid=$(get_client_uuid "${cfg}" "${realm}" "${client_id}")
+    if [ -z "${client_uuid}" ]; then
         kc "${cfg}" create clients -r "${realm}" \
             -s clientId="${client_id}" \
             -s name="Web Application B (SAML SP)" \
             -s enabled=true \
             -s protocol=saml \
             -s frontchannelLogout=true \
-            -s 'redirectUris=["'"${WEBAPP_B_ACS_URL}"'"]' \
+            -s 'redirectUris='"${redirect_uris}" \
             -s 'attributes."saml.authnstatement"=true' \
             -s 'attributes."saml.server.signature"=true' \
             -s 'attributes."saml.assertion.signature"=true' \
@@ -304,14 +334,18 @@ ensure_saml_client() {
             -s 'attributes."saml.signature.algorithm"=RSA_SHA256' \
             -s 'attributes."saml_name_id_format"=username' \
             -s 'attributes."saml_force_name_id_format"=true' \
-            -s 'attributes."saml_assertion_consumer_url_post"='"${WEBAPP_B_ACS_URL}" \
-            -s 'attributes."saml_single_logout_service_url_post"='"${WEBAPP_B_SLS_URL}" \
-            -s 'attributes."saml_single_logout_service_url_redirect"='"${WEBAPP_B_SLS_URL}" >/dev/null
+            -s 'attributes."saml_assertion_consumer_url_post"='"${acs_url}" \
+            -s 'attributes."saml_single_logout_service_url_post"='"${sls_url}" \
+            -s 'attributes."saml_single_logout_service_url_redirect"='"${sls_url}" >/dev/null
         echo "SAML client ${client_id} created in realm ${realm}"
+        client_uuid=$(get_client_uuid "${cfg}" "${realm}" "${client_id}")
+    else
+        # Sync valid redirect URIs so each copy's ACS/SLS endpoint is accepted.
+        kc "${cfg}" update "clients/${client_uuid}" -r "${realm}" \
+            -s 'redirectUris='"${redirect_uris}" >/dev/null
+        echo "SAML client ${client_id} updated in realm ${realm} (ACS URLs synced)"
     fi
 
-    local client_uuid
-    client_uuid=$(get_client_uuid "${cfg}" "${realm}" "${client_id}")
     if [ -n "${client_uuid}" ]; then
         ensure_saml_client_property_mapper "${cfg}" "${realm}" "${client_uuid}" "email"     "email"     "email"
         ensure_saml_client_property_mapper "${cfg}" "${realm}" "${client_uuid}" "firstName" "firstName" "firstName"
@@ -359,17 +393,39 @@ ensure_group_mapper \
     "ldap-si" \
     "ou=groups,dc=si,dc=etf,dc=bg,dc=ac,dc=rs"
 
-ensure_oidc_client "${CFG_A}" "${KEYCLOAK_A_REALM}" "webapp-rti-oauth2"
-ensure_saml_client "${CFG_B}" "${KEYCLOAK_B_REALM}" "webapp-si-saml"
+# Register one distinct OIDC client per RTI instance. Each app gets its own
+# client_id, redirect URI, web origin, and token mappers (API audience + groups
+# claim) so SSO is exercised across different apps sharing one Keycloak session.
+for j in $(seq 1 "${WEBAPP_RTI_COPIES}"); do
+    rti_port=$((3000 + j - 1))
+    rti_client_id="webapp-rti-oauth2-${j}"
+    rti_redirect_uri="http://rti${j}.localhost:${rti_port}/*"
+    rti_web_origin="http://rti${j}.localhost:${rti_port}"
 
-# Add the OAuth 2.0 API audience and the group claim to Web App A tokens so the
-# resource server can enforce audience and api-access group membership.
-webapp_a_uuid=$(get_client_uuid "${CFG_A}" "${KEYCLOAK_A_REALM}" "webapp-rti-oauth2")
-if [ -n "${webapp_a_uuid}" ]; then
-    ensure_oidc_audience_mapper "${CFG_A}" "${KEYCLOAK_A_REALM}" "${webapp_a_uuid}" "oauth2-api-audience" "${API_AUDIENCE}"
-    ensure_group_membership_mapper "${CFG_A}" "${KEYCLOAK_A_REALM}" "${webapp_a_uuid}" "groups" "groups"
-else
-    echo "Could not resolve OIDC client UUID for webapp-rti-oauth2; skipping API token mappers" >&2
-fi
+    ensure_oidc_client "${CFG_A}" "${KEYCLOAK_A_REALM}" "${rti_client_id}" \
+        "$(build_json_array "${rti_redirect_uri}")" \
+        "$(build_json_array "${rti_web_origin}")"
+
+    rti_uuid=$(get_client_uuid "${CFG_A}" "${KEYCLOAK_A_REALM}" "${rti_client_id}")
+    if [ -n "${rti_uuid}" ]; then
+        ensure_oidc_audience_mapper "${CFG_A}" "${KEYCLOAK_A_REALM}" "${rti_uuid}" "oauth2-api-audience" "${API_AUDIENCE}"
+        ensure_group_membership_mapper "${CFG_A}" "${KEYCLOAK_A_REALM}" "${rti_uuid}" "groups" "groups"
+    else
+        echo "Could not resolve OIDC client UUID for ${rti_client_id}; skipping API token mappers" >&2
+    fi
+done
+
+# Register one distinct SAML SP client per SI instance, each with its own
+# entityID/issuer and ACS/SLS endpoints (attribute mappers added per client).
+for j in $(seq 1 "${WEBAPP_SI_COPIES}"); do
+    si_port=$((4000 + j - 1))
+    si_client_id="webapp-si-saml-${j}"
+    si_acs_url="http://si${j}.localhost:${si_port}/saml/acs"
+    si_sls_url="http://si${j}.localhost:${si_port}/saml/sls"
+
+    ensure_saml_client "${CFG_B}" "${KEYCLOAK_B_REALM}" "${si_client_id}" \
+        "$(build_json_array "${si_acs_url}" "${si_sls_url}")" \
+        "${si_acs_url}" "${si_sls_url}"
+done
 
 echo "LDAP user federation preconfigured"

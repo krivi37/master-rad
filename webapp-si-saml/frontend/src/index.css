@@ -1,13 +1,48 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
+  --accent: #34d399;
+  /* Higher-contrast green for links and the badge, independent of per-instance accent. */
+  --link: #059669;
+  /* Surface palette (dark, default). Overridden by [data-mode="light"] below. */
+  --bg: #0f172a;
+  --text: #e2e8f0;
+  --surface: #1e293b;
+  --surface-2: #0f172a;
+  --border: #334155;
+  --muted: #94a3b8;
+  --btn-bg: #334155;
+  --btn-hover: #475569;
+}
+
+:root[data-mode="light"] {
+  color-scheme: light;
+  --link: #065f46;
+  --bg: #f1f5f9;
+  --text: #0f172a;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #cbd5e1;
+  --muted: #475569;
+  --btn-bg: #e2e8f0;
+  --btn-hover: #cbd5e1;
+}
+
+/* Accent theme per app copy, selected via document data-theme = (instance-1) % 3. */
+:root[data-theme="1"] {
+  --accent: #fb7185;
+}
+
+:root[data-theme="2"] {
+  --accent: #facc15;
 }
 
 body {
   margin: 0;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--bg);
+  color: var(--text);
+  border-top: 6px solid var(--accent);
 }
 
 .container {
@@ -26,10 +61,21 @@ h1 {
   margin: 0 0 1rem;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: #1e293b;
-  color: #34d399;
+  background: var(--surface);
+  color: var(--link);
   font-size: 0.8rem;
   letter-spacing: 0.02em;
+}
+
+.instance-chip {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
 }
 
 .topbar {
@@ -48,8 +94,8 @@ h1 {
 }
 
 .card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
@@ -68,7 +114,7 @@ h1 {
   text-align: left;
   width: 140px;
   padding: 0.25rem 0.5rem 0.25rem 0;
-  color: #94a3b8;
+  color: var(--muted);
   font-weight: 600;
   vertical-align: top;
 }
@@ -82,8 +128,8 @@ h1 {
   overflow-x: auto;
   max-height: 420px;
   overflow-y: auto;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem;
   font-size: 0.78rem;
@@ -93,34 +139,105 @@ h1 {
 
 button {
   cursor: pointer;
-  border: 1px solid #334155;
-  background: #334155;
-  color: #e2e8f0;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text);
   padding: 0.5rem 0.9rem;
   border-radius: 8px;
   font-size: 0.9rem;
 }
 
 button:hover {
-  background: #475569;
+  background: var(--btn-hover);
 }
 
 button.primary {
-  background: #059669;
-  border-color: #059669;
-  color: white;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0f172a;
   font-weight: 600;
 }
 
 button.primary:hover {
-  background: #047857;
+  filter: brightness(1.08);
 }
 
 a {
-  color: #34d399;
+  color: var(--link);
 }
 
 .forbidden {
   color: #fca5a5;
   font-weight: 600;
+}
+
+.login-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Floating dark/light mode switcher, mounted globally in main.tsx. */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theme-toggle:hover {
+  background: var(--btn-hover);
 }

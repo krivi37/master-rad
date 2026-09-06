@@ -13,7 +13,7 @@ import {
 
 const config = {
   port: Number(process.env.PORT ?? 4001),
-  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:4000",
+  frontendUrl: process.env.FRONTEND_URL ?? "http://si1.localhost:4000",
   entryPoint:
     process.env.SAML_ENTRY_POINT ??
     "http://si.localhost:8082/realms/si/protocol/saml",
@@ -21,7 +21,14 @@ const config = {
     process.env.SAML_IDP_ISSUER ?? "http://si.localhost:8082/realms/si",
   issuer: process.env.SAML_ISSUER ?? "webapp-si-saml",
   callbackUrl:
-    process.env.SAML_ACS_URL ?? "http://localhost:4000/saml/acs",
+    process.env.SAML_ACS_URL ?? "http://si1.localhost:4000/saml/acs",
+  // Keycloak's SLS endpoint that receives our LogoutRequest (same path as login).
+  logoutUrl:
+    process.env.SAML_LOGOUT_URL ??
+    "http://si.localhost:8082/realms/si/protocol/saml",
+  // Our SP endpoint where Keycloak returns the LogoutResponse.
+  logoutCallbackUrl:
+    process.env.SAML_SLS_URL ?? "http://si1.localhost:4000/saml/sls",
   metadataUrl:
     process.env.SAML_METADATA_URL ??
     "http://keycloak-si:8080/realms/si/protocol/saml/descriptor",
@@ -38,8 +45,35 @@ interface SamlUser {
   sessionNotOnOrAfter?: string;
   attributes: SamlAttributes;
   assertionXml: string;
+  authType?: "saml" | "local";
   [key: string]: unknown;
 }
+
+interface LocalCredential {
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+}
+
+// Local accounts live ONLY inside this app: they are unknown to Keycloak SI and
+// the LDAP directory. There is no IdP session behind them, so they get no SSO —
+// the session cookie is the whole login, and deleting it logs the user out for
+// good. Other instances never share it, so each one demands a fresh login.
+const LOCAL_USERS: LocalCredential[] = [
+  {
+    username: "sonja-local",
+    password: "local",
+    name: "Sonja Local (SI app)",
+    email: "sonja@local.si",
+  },
+  {
+    username: "ljubo-local",
+    password: "local",
+    name: "Ljubo Local (SI app)",
+    email: "ljubo@local.si",
+  },
+];
 
 declare global {
   namespace Express {
@@ -112,6 +146,8 @@ function createStrategy(idpCert: string): SamlStrategy {
     {
       callbackUrl: config.callbackUrl,
       entryPoint: config.entryPoint,
+      logoutUrl: config.logoutUrl,
+      logoutCallbackUrl: config.logoutCallbackUrl,
       issuer: config.issuer,
       idpCert,
       idpIssuer: config.idpIssuer,
@@ -193,6 +229,36 @@ function registerRoutes(app: express.Express, strategy: SamlStrategy): void {
   app.post("/saml/sls", authenticate, finishLogout);
   app.get("/saml/local-logout", finishLogout);
 
+  app.post("/local/login", (req: Request, res: Response, next) => {
+    const { username, password } = (req.body ?? {}) as {
+      username?: string;
+      password?: string;
+    };
+    const match = LOCAL_USERS.find(
+      (candidate) =>
+        candidate.username === username && candidate.password === password,
+    );
+    if (!match) {
+      res.status(401).json({ error: "Invalid local credentials" });
+      return;
+    }
+
+    const user: SamlUser = {
+      nameID: match.username,
+      authType: "local",
+      issuer: "local-accounts (webapp-si-saml)",
+      attributes: { displayName: match.name, email: match.email },
+      assertionXml: "",
+    };
+    req.logIn(user, (loginError) => {
+      if (loginError) {
+        next(loginError);
+        return;
+      }
+      res.json({ ok: true });
+    });
+  });
+
   app.get("/saml/metadata", (_req, res) => {
     res
       .type("application/xml")
@@ -214,6 +280,7 @@ function registerRoutes(app: express.Express, strategy: SamlStrategy): void {
       sessionNotOnOrAfter: user.sessionNotOnOrAfter,
       attributes: user.attributes,
       assertionXml: user.assertionXml,
+      authType: user.authType ?? "saml",
     });
   });
 }
@@ -227,6 +294,7 @@ async function main(): Promise<void> {
   const app = express();
   app.set("trust proxy", 1);
   app.use(express.urlencoded({ extended: false, limit: "5mb" }));
+  app.use(express.json());
   app.use(
     session({
       name: "webapp_b_sid",

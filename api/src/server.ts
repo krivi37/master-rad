@@ -26,7 +26,7 @@ const config = {
     "http://keycloak-rti:8080/realms/rti/protocol/openid-connect/certs",
   audience: process.env.API_AUDIENCE ?? "oauth2-api",
   requiredGroup: process.env.API_REQUIRED_GROUP ?? "api-access",
-  corsOrigin: process.env.API_CORS_ORIGIN ?? "http://localhost:3000",
+  corsOrigin: process.env.API_CORS_ORIGIN ?? "http://rti1.localhost:3000",
 };
 
 interface TokenPayload {
@@ -120,7 +120,13 @@ const requireApiAccess = (
 };
 
 const app = express();
-app.use(cors({ origin: config.corsOrigin }));
+// Allow the configured origin(s) plus any rtiN.localhost copy used for the SSO demo.
+const corsOrigins: (string | RegExp)[] = config.corsOrigin
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+corsOrigins.push(/^http:\/\/rti\d+\.localhost(:\d+)?$/);
+app.use(cors({ origin: corsOrigins }));
 app.use(passport.initialize());
 
 app.get("/health", (_req: Request, res: Response) => {

@@ -83,7 +83,7 @@ ensure_oidc_broker_client() {
     local secret="$4"
     local redirect_uri="$5"
 
-    if kc "${cfg}" get clients -r "${realm}" -q clientId="${client_id}" | grep -Eq "\"clientId\"[[:space:]]*:[[:space:]]*\"${client_id}\""; then
+    if client_exists "${cfg}" "${realm}" "${client_id}"; then
         echo "OIDC broker client ${client_id} already exists in realm ${realm}"
         return 0
     fi
@@ -210,7 +210,7 @@ ensure_saml_sp_client() {
     local entity_id="${sp_host}/realms/${sp_realm}"
     local acs_url="${entity_id}/broker/${alias}/endpoint"
 
-    if kc "${cfg}" get clients -r "${realm}" -q clientId="${entity_id}" | grep -Eq "\"clientId\""; then
+    if client_exists "${cfg}" "${realm}" "${entity_id}"; then
         echo "SAML SP client ${entity_id} already exists in realm ${realm}"
         return 0
     fi
@@ -245,6 +245,18 @@ get_client_uuid() {
     local realm="$2"
     local client_id="$3"
     kc "${cfg}" get clients -r "${realm}" -q clientId="${client_id}" --fields id --format csv --noquotes 2>/dev/null | tr -d '\r' | head -n1
+}
+
+# True when a client with the given clientId exists in the realm.
+client_exists() {
+    [ -n "$(get_client_uuid "$1" "$2" "$3")" ]
+}
+
+# True when a protocol mapper named $4 already exists on client UUID $3.
+client_mapper_exists() {
+    local cfg="$1" realm="$2" client_uuid="$3" name="$4"
+    kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
+        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""
 }
 
 idp_mapper_exists() {
@@ -288,8 +300,7 @@ ensure_saml_client_property_mapper() {
     local user_property="$5"
     local saml_attr="$6"
 
-    if kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""; then
+    if client_mapper_exists "${cfg}" "${realm}" "${client_uuid}" "${name}"; then
         echo "SAML client mapper ${name} already exists in realm ${realm}"
         return 0
     fi
@@ -315,8 +326,7 @@ ensure_saml_client_group_mapper() {
     local name="$4"
     local saml_attr="$5"
 
-    if kc "${cfg}" get "clients/${client_uuid}/protocol-mappers/models" -r "${realm}" 2>/dev/null \
-        | grep -Eq "\"name\"[[:space:]]*:[[:space:]]*\"${name}\""; then
+    if client_mapper_exists "${cfg}" "${realm}" "${client_uuid}" "${name}"; then
         echo "SAML client group mapper ${name} already exists in realm ${realm}"
         return 0
     fi

@@ -8,4 +8,5 @@ export interface SamlSession {
   sessionNotOnOrAfter?: string;
   attributes: SamlAttributes;
   assertionXml: string;
+  authType?: "saml" | "local";
 }

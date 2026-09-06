@@ -5,7 +5,7 @@ const authority =
   import.meta.env.VITE_OIDC_AUTHORITY ?? "http://rti.localhost:8081/realms/rti";
 const clientId = import.meta.env.VITE_OIDC_CLIENT_ID ?? "webapp-rti-oauth2";
 const redirectUri =
-  import.meta.env.VITE_OIDC_REDIRECT_URI ?? "http://localhost:3000";
+  import.meta.env.VITE_OIDC_REDIRECT_URI ?? "http://rti1.localhost:3000";
 
 export const oidcConfig: AuthProviderProps = {
   authority,

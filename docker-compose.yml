@@ -127,7 +127,9 @@ services:
       KEYCLOAK_LDAP_BIND_PASSWORD: ${KEYCLOAK_LDAP_BIND_PASSWORD}
       WEBAPP_A_REDIRECT_URI: ${WEBAPP_A_REDIRECT_URI}
       WEBAPP_B_ACS_URL: ${WEBAPP_B_ACS_URL}
-      WEBAPP_B_SLS_URL: ${WEBAPP_B_SLS_URL:-http://localhost:4000/saml/sls}
+      WEBAPP_B_SLS_URL: ${WEBAPP_B_SLS_URL:-http://si1.localhost:4000/saml/sls}
+      WEBAPP_RTI_COPIES: ${WEBAPP_RTI_COPIES:-1}
+      WEBAPP_SI_COPIES: ${WEBAPP_SI_COPIES:-1}
       SSO_SESSION_IDLE_TIMEOUT: ${SSO_SESSION_IDLE_TIMEOUT:-300}
       SSO_SESSION_MAX_LIFESPAN: ${SSO_SESSION_MAX_LIFESPAN:-300}
       API_AUDIENCE: ${API_AUDIENCE:-oauth2-api}
@@ -182,9 +184,10 @@ services:
       dockerfile: Dockerfile
     environment:
       VITE_OIDC_AUTHORITY: ${WEBAPP_A_OIDC_AUTHORITY:-http://rti.localhost:8081/realms/rti}
-      VITE_OIDC_CLIENT_ID: ${WEBAPP_A_OIDC_CLIENT_ID:-webapp-rti-oauth2}
-      VITE_OIDC_REDIRECT_URI: ${WEBAPP_A_OIDC_REDIRECT_URI:-http://localhost:3000}
+      VITE_OIDC_CLIENT_ID: ${WEBAPP_A_OIDC_CLIENT_ID:-webapp-rti-oauth2-1}
+      VITE_OIDC_REDIRECT_URI: ${WEBAPP_A_OIDC_REDIRECT_URI:-http://rti1.localhost:3000}
       VITE_API_BASE_URL: ${WEBAPP_A_API_BASE_URL:-http://localhost:5000}
+      VITE_APP_INSTANCE: "1"
     ports:
       - "3000:3000"
     networks:
@@ -203,11 +206,11 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: "4001"
-      FRONTEND_URL: ${WEBAPP_B_FRONTEND_URL:-http://localhost:4000}
+      FRONTEND_URL: ${WEBAPP_B_FRONTEND_URL:-http://si1.localhost:4000}
       SAML_ENTRY_POINT: ${WEBAPP_B_SAML_ENTRY_POINT:-http://si.localhost:8082/realms/si/protocol/saml}
       SAML_IDP_ISSUER: ${WEBAPP_B_SAML_IDP_ISSUER:-http://si.localhost:8082/realms/si}
-      SAML_ISSUER: ${WEBAPP_B_SAML_ISSUER:-webapp-si-saml}
-      SAML_ACS_URL: ${WEBAPP_B_ACS_URL:-http://localhost:4000/saml/acs}
+      SAML_ISSUER: ${WEBAPP_B_SAML_ISSUER:-webapp-si-saml-1}
+      SAML_ACS_URL: ${WEBAPP_B_ACS_URL:-http://si1.localhost:4000/saml/acs}
       SAML_METADATA_URL: ${WEBAPP_B_SAML_METADATA_URL:-http://keycloak-si:8080/realms/si/protocol/saml/descriptor}
       SESSION_SECRET: ${WEBAPP_B_SESSION_SECRET:-webapp-si-saml-dev-secret}
     networks:
@@ -229,6 +232,7 @@ services:
       dockerfile: Dockerfile
     environment:
       BACKEND_URL: http://webapp-si-saml-backend:4001
+      VITE_APP_INSTANCE: "1"
     ports:
       - "4000:4000"
     networks:
@@ -247,7 +251,7 @@ services:
       API_JWKS_URI: ${API_JWKS_URI:-http://keycloak-rti:8080/realms/rti/protocol/openid-connect/certs}
       API_AUDIENCE: ${API_AUDIENCE:-oauth2-api}
       API_REQUIRED_GROUP: ${API_REQUIRED_GROUP:-api-access}
-      API_CORS_ORIGIN: ${API_CORS_ORIGIN:-http://localhost:3000}
+      API_CORS_ORIGIN: ${API_CORS_ORIGIN:-http://rti1.localhost:3000}
     ports:
       - "5000:5000"
     networks:
