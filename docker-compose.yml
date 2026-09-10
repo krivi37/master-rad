@@ -9,6 +9,7 @@ services:
       LDAP_ADMIN_PASSWORD: ${LDAP_RTI_ADMIN_PASSWORD}
       LDAP_BASE_LDIF: /seed/base.ldif
       LDAP_USERS_LDIF: /seed/users.ldif
+      KEYCLOAK_LDAP_BIND_PASSWORD: ${KEYCLOAK_LDAP_BIND_PASSWORD}
       AUTO_POPULATE: ${AUTO_POPULATE}
       LAB_MODE: ${LAB_MODE:-manual}
     ports:
@@ -35,6 +36,7 @@ services:
       LDAP_ADMIN_PASSWORD: ${LDAP_SI_ADMIN_PASSWORD}
       LDAP_BASE_LDIF: /seed/base.ldif
       LDAP_USERS_LDIF: /seed/users.ldif
+      KEYCLOAK_LDAP_BIND_PASSWORD: ${KEYCLOAK_LDAP_BIND_PASSWORD}
       AUTO_POPULATE: ${AUTO_POPULATE}
       LAB_MODE: ${LAB_MODE:-manual}
     ports:

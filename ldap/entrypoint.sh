@@ -7,6 +7,7 @@ set -euo pipefail
 : "${LDAP_USERS_LDIF:?LDAP_USERS_LDIF is required}"
 AUTO_POPULATE="${AUTO_POPULATE:-true}"
 LAB_MODE="${LAB_MODE:-manual}"
+KEYCLOAK_LDAP_BIND_PASSWORD="${KEYCLOAK_LDAP_BIND_PASSWORD:-keycloak123}"
 
 # LAB_MODE is the master switch: preconfigured forces seeding regardless of the
 # per-component AUTO_POPULATE knob; manual defers to AUTO_POPULATE.
@@ -49,8 +50,25 @@ if [ ! -f /var/lib/ldap/data.mdb ]; then
         -D "cn=admin,${LDAP_BASE_DN}" -w "${LDAP_ADMIN_PASSWORD}" -f "${LDAP_BASE_LDIF}"
 
     if [ "${AUTO_POPULATE,,}" = "true" ]; then
+        bind_dn="uid=keycloak,ou=users,${LDAP_BASE_DN}"
+        bind_password_hash="$(slappasswd -n -s "${KEYCLOAK_LDAP_BIND_PASSWORD}")"
+        users_ldif=/tmp/users.ldif
+        awk -v bind_dn="${bind_dn}" -v password_hash="${bind_password_hash}" '
+            {
+                line = $0
+                sub(/\r$/, "", line)
+            }
+            line == "dn: " bind_dn { in_bind_entry = 1 }
+            in_bind_entry && line ~ /^userPassword:/ {
+                print "userPassword: " password_hash
+                next
+            }
+            in_bind_entry && line == "" { in_bind_entry = 0 }
+            { print }
+        ' "${LDAP_USERS_LDIF}" > "${users_ldif}"
+
         ldapadd -x -H ldap://127.0.0.1:389 \
-            -D "cn=admin,${LDAP_BASE_DN}" -w "${LDAP_ADMIN_PASSWORD}" -f "${LDAP_USERS_LDIF}"
+            -D "cn=admin,${LDAP_BASE_DN}" -w "${LDAP_ADMIN_PASSWORD}" -f "${users_ldif}"
         echo "Seed users and groups imported"
     else
         echo "AUTO_POPULATE=false; only the directory base was created"
