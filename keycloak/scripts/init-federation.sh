@@ -344,19 +344,36 @@ ensure_saml_client_group_mapper() {
 }
 
 # Create a realm group if it does not exist so the IdP group mapper has a target.
+realm_group_exists() {
+    local cfg="$1" realm="$2" group_name="$3"
+    kc "${cfg}" get groups -r "${realm}" -q search="${group_name}" --fields name --format csv --noquotes 2>/dev/null \
+        | tr -d '\r' | grep -Fxq "${group_name}"
+}
+
 ensure_realm_group() {
     local cfg="$1"
     local realm="$2"
     local group_name="$3"
 
-    if kc "${cfg}" get groups -r "${realm}" -q search="${group_name}" --fields name --format csv --noquotes 2>/dev/null \
-        | tr -d '\r' | grep -Fxq "${group_name}"; then
+    if realm_group_exists "${cfg}" "${realm}" "${group_name}"; then
         echo "Realm group ${group_name} already exists in realm ${realm}"
         return 0
     fi
 
-    kc "${cfg}" create groups -r "${realm}" -s name="${group_name}" >/dev/null
-    echo "Realm group ${group_name} created in realm ${realm}"
+    if kc "${cfg}" create groups -r "${realm}" -s name="${group_name}" >/dev/null 2>&1; then
+        echo "Realm group ${group_name} created in realm ${realm}"
+        return 0
+    fi
+
+    # keycloak-init imports the same group from LDAP, so it can appear between the
+    # check above and the create; only a still-missing group is a real failure.
+    if realm_group_exists "${cfg}" "${realm}" "${group_name}"; then
+        echo "Realm group ${group_name} already exists in realm ${realm}"
+        return 0
+    fi
+
+    echo "Could not create realm group ${group_name} in realm ${realm}" >&2
+    return 1
 }
 
 # On RTI, place brokered SI users into the target group only when their incoming

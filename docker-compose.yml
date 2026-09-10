@@ -141,9 +141,9 @@ services:
       - lab-network
     depends_on:
       keycloak-rti:
-        condition: service_started
+        condition: service_healthy
       keycloak-si:
-        condition: service_started
+        condition: service_healthy
       ldap-rti:
         condition: service_healthy
       ldap-si:
@@ -175,9 +175,9 @@ services:
       - "si.localhost:host-gateway"
     depends_on:
       keycloak-rti:
-        condition: service_started
+        condition: service_healthy
       keycloak-si:
-        condition: service_started
+        condition: service_healthy
     restart: "no"
 
   webapp-rti-oauth2:
