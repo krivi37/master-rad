@@ -184,6 +184,7 @@ services:
     build:
       context: ./webapp-rti-oauth2
       dockerfile: Dockerfile
+    image: lab/webapp-rti-oauth2:local
     environment:
       VITE_OIDC_AUTHORITY: ${WEBAPP_A_OIDC_AUTHORITY:-http://rti.localhost:8081/realms/rti}
       VITE_OIDC_CLIENT_ID: ${WEBAPP_A_OIDC_CLIENT_ID:-webapp-rti-oauth2-1}
@@ -206,6 +207,7 @@ services:
     build:
       context: ./webapp-si-saml/backend
       dockerfile: Dockerfile
+    image: lab/webapp-si-saml-backend:local
     environment:
       PORT: "4001"
       FRONTEND_URL: ${WEBAPP_B_FRONTEND_URL:-http://si1.localhost:4000}
@@ -232,6 +234,7 @@ services:
     build:
       context: ./webapp-si-saml/frontend
       dockerfile: Dockerfile
+    image: lab/webapp-si-saml-frontend:local
     environment:
       BACKEND_URL: http://webapp-si-saml-backend:4001
       VITE_APP_INSTANCE: "1"
@@ -247,6 +250,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    image: lab/api:local
     environment:
       PORT: "5000"
       API_ISSUER: ${API_ISSUER:-http://rti.localhost:8081/realms/rti}
