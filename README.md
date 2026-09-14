@@ -23,7 +23,7 @@ Now you can connect to various endpoints:
 5. http://si1.localhost:4000 - SI webapp which is set up as a SAML client. You can also use both realms to login due to federation. The landing page after login shows SAML token info.
    Since this web app also has a small backend, the frontend exposes 2 Log Out buttons - one for local client log out and the other for destroying the SAML session which invokes
    the API call on the backend app
-6. If using multiple apps, you can access them by going to addresses made like this: http://rti<n>.localhost:300<n-1> and http://si<n>.localhost:400<n-1> (e.g. http://rti2.localhost:3001)
+6. If using multiple apps, you can access them by going to addresses made like this: http://rtiN.localhost:300(N-1) and http://siN.localhost:400(N-1) (e.g. http://rti2.localhost:3001)
 
 # Manual mode
 1. Edit the env file: LAB_MODE=manual
