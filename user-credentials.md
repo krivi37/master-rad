@@ -1,40 +1,40 @@
-# Lab User Credentials
+# Korisnički pristupni podaci za laboratoriju
 
-> Plaintext passwords for the seeded LDAP users. **Lab use only — do not use in production.**
-> The LDIF files store only salted SSHA hashes of these passwords.
+> Lozinke za unaprijed kreirane LDAP korisnike.
+> U LDIF fajlovima čuvaju se samo SSHA heš vrijednosti ovih lozinki.
 
-## RTI directory (`ldap-rti`, realm `rti`)
+## RTI direktorijum (`ldap-rti`, domen `rti`)
 
-| Username | Password     | Groups           |
+| Korisničko ime | Lozinka      | Grupe            |
 | -------- | ------------ | ---------------- |
 | miroslav | `Miroslav123!` | api-access       |
 | milica   | `Milica123!`   | —                |
-| keycloak | `keycloak123` | admins (service) |
+| keycloak | `keycloak123` | admins (servis)  |
 
-## SI directory (`ldap-si`, realm `si`)
+## SI direktorijum (`ldap-si`, domen `si`)
 
-| Username | Password     | Groups           |
+| Korisničko ime | Lozinka      | Grupe            |
 | -------- | ------------ | ---------------- |
 | sonja    | `Sonja123!`   | api-access       |
 | ljubo    | `Ljubo123!`   | —                |
-| keycloak | `keycloak123` | admins (service) |
+| keycloak | `keycloak123` | admins (servis)  |
 
-## Local accounts (outside the IdP — no SSO)
+## Lokalni nalozi (izvan IdP-a — bez SSO)
 
-> Defined inside each web app, unknown to Keycloak and LDAP. Because there is no
-> identity-provider session behind them, they get **no SSO**: the login lives
-> only in that instance and disappears when its cookie/storage is cleared.
+> Definisani su unutar svake veb-aplikacije i nisu poznati Keycloaku ni LDAP-u.
+> Pošto iza njih ne postoji sesija pružaoca identiteta, **nemaju SSO**: prijava postoji
+> samo u toj instanci i nestaje kada se izbrišu njeni kolačići ili podaci iz lokalnog skladišta.
 
-### Web Application A (`webapp-rti-oauth2`)
+### Veb-aplikacija A (`webapp-rti-oauth2`)
 
-| Username      | Password | Notes                                        |
+| Korisničko ime | Lozinka | Napomene                                      |
 | ------------- | -------- | -------------------------------------------- |
-| miroslav-local   | `local`  | Session in tab `sessionStorage`; no API token |
-| milica-local     | `local`  | Session in tab `sessionStorage`; no API token |
+| miroslav-local   | `local`  | Sesija u kartici, u `sessionStorage`; bez API tokena |
+| milica-local     | `local`  | Sesija u kartici, u `sessionStorage`; bez API tokena |
 
-### Web Application B (`webapp-si-saml`)
+### Veb-aplikacija B (`webapp-si-saml`)
 
-| Username    | Password | Notes                                    |
+| Korisničko ime | Lozinka | Napomene                             |
 | ----------- | -------- | ---------------------------------------- |
-| sonja-local   | `local`  | Session cookie only; no SAML assertion   |
-| ljubo-local  | `local`  | Session cookie only; no SAML assertion   |
+| sonja-local   | `local`  | Samo kolačić sesije; bez SAML assertion-a    |
+| ljubo-local  | `local`  | Samo kolačić sesije; bez SAML assertion-a   |

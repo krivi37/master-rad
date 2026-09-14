@@ -95,6 +95,7 @@ for ($j = 2; $j -le $SiCopies; $j++) {
     [void]$body.AppendLine('      SAML_IDP_ISSUER: ${WEBAPP_B_SAML_IDP_ISSUER:-http://si.localhost:8082/realms/si}')
     [void]$body.AppendLine("      SAML_ISSUER: webapp-si-saml-$j")
     [void]$body.AppendLine("      SAML_ACS_URL: http://si$j.localhost:$port/saml/acs")
+    [void]$body.AppendLine("      SAML_SLS_URL: http://si$j.localhost:$port/saml/sls")
     [void]$body.AppendLine('      SAML_METADATA_URL: ${WEBAPP_B_SAML_METADATA_URL:-http://keycloak-si:8080/realms/si/protocol/saml/descriptor}')
     [void]$body.AppendLine('      SESSION_SECRET: ${WEBAPP_B_SESSION_SECRET:-webapp-si-saml-dev-secret}')
     [void]$body.AppendLine('    networks:')

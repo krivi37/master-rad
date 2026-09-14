@@ -18,8 +18,8 @@ prije svake sekcije. Prvo podignite sistem u ručnom režimu
 
 > **Savjet — jedna komanda podiže cijeli lab.** Cross-platform startup skripta
 > takođe generiše compose override za SSO demo. Pokrenite `./lab-up.ps1 1 1`
-> (Windows) ili `./lab-up.sh 1 1` (Linux/macOS/Git Bash) da pokrenete **jednu**
-> kopiju svake aplikacije — `1 1` je validno pokretanje bez kopija (upisuje
+> (Windows) ili `./lab-up.sh 1 1` (Linux/macOS/Git Bash) da pokrenete po jednu
+> osnovnu instancu svake aplikacije, bez dodatnih kopija. Vrijednost `1 1` upisuje
 > prazan override, ekvivalentno običnom `docker compose up -d --build`). Za
 > dodatne kopije, pogledajte sekciju **Opciono — Više kopija web-aplikacija
 > (SSO demo)** na kraju ovog dokumenta.
@@ -30,7 +30,7 @@ Ključne činjenice koje oblikuju ove korake:
 - **OIDC** povjerenje = *RTI korisnici se prijavljuju na SI*. **SAML** povjerenje =
   *SI korisnici se prijavljuju na RTI*.
 - API je **resource server**, a ne klijent — „podešava se“ dodavanjem audience
-  mapper-a + groups claim-a na klijent `webapp-rti-oauth2`.
+   mapper-a + groups claim-a na svaki OIDC klijent `webapp-rti-oauth2-N`.
 - Korak 6 ima **native-RTI** putanju i **federated-SI** putanju; obje su potrebne.
 
 ### Sistemski zahtijevi
@@ -383,8 +383,9 @@ Kompromis: odjava iz jednog realm-a gasi i sesiju drugog, ali dvosmjerni lanac
 (RTI→SI→RTI) može ući u opisanu petlju.
 
 > U **preconfigured** režimu ovo kontroliše promjenljiva `KC_FEDERATION_LOGOUT_PROPAGATION`
-> u `.env`: `off` (Opcija A, podrazumijevano) ili `on` (Opcija B). Skripta
-> `init-federation.sh` na osnovu nje postavlja ili izostavlja gornje URL-ove.
+> u `.env`: `off` bira Opciju A, a `on` Opciju B. Dostavljeni `.env.example`
+> trenutno koristi `on`; ako promjenljiva nije zadata, Compose koristi `off`.
+> Skripta `init-federation.sh` na osnovu nje postavlja ili izostavlja gornje URL-ove.
 
 ---
 
@@ -463,10 +464,10 @@ Ovi mapperi mapiraju:
 
 ## Korak 5 — Klijenti za web-aplikacije i API
 
-### 5a — OIDC klijent `webapp-rti-oauth2` (realm `rti`) + API audience
+### 5a — OIDC klijent `webapp-rti-oauth2-1` (realm `rti`) + API audience
 
 1. **Clients** → **Create client** → **OpenID Connect** → Client ID
-   `webapp-rti-oauth2` → **Next**.
+   `webapp-rti-oauth2-1` → **Next**.
 2. **Client authentication: Off** (javni); **Standard flow** On; **Direct access
    grants** Off → **Next**.
 3. **Valid redirect URIs**: `http://rti1.localhost:3000/*`; **Web origins**:
@@ -474,7 +475,7 @@ Ovi mapperi mapiraju:
 4. Kartica **Advanced** → **Proof Key for Code Exchange Code Challenge Method** = `S256` → **Save**.
 5. **Settings** → **Valid post logout redirect URIs**:
    `http://rti1.localhost:3000/*` → **Save**.
-6. Kartica **Client scopes** → `webapp-rti-oauth2-dedicated` → **Add mapper → By
+6. Kartica **Client scopes** → `webapp-rti-oauth2-1-dedicated` → **Add mapper → By
    configuration → Audience**:
 
 | Polje | Vrijednost |
@@ -486,15 +487,15 @@ Ovi mapperi mapiraju:
 
 `groups` mapper na ovom klijentu je u **Koraku 6a**.
 
-### 5b — SAML klijent `webapp-si-saml` (realm `si`)
+### 5b — SAML klijent `webapp-si-saml-1` (realm `si`)
 
-1. **Clients** → **Create client** → **SAML** → Client ID `webapp-si-saml` → **Next** → **Save**.
+1. **Clients** → **Create client** → **SAML** → Client ID `webapp-si-saml-1` → **Next** → **Save**.
 2. U **Settings** klijenta, podesite:
 
 | Polje | Vrijednost |
 |---|---|
 | Name | `Web Application B (SAML SP)` |
-| Valid redirect URIs | `http://si1.localhost:4000/saml/acs` |
+| Valid redirect URIs | `http://si1.localhost:4000/saml/acs`, `http://si1.localhost:4000/saml/sls` |
 | Assertion Consumer Service POST Binding URL | `http://si1.localhost:4000/saml/acs` |
 | Name ID format | `username` |
 | Force name ID format | `On` |
@@ -517,7 +518,7 @@ Ovi mapperi mapiraju:
 | Logout Service Redirect Binding URL | `http://si1.localhost:4000/saml/sls` |
 
 3. **Save**.
-4. **Client scopes** → `webapp-si-saml-dedicated` → **Add mapper → By
+4. **Client scopes** → `webapp-si-saml-1-dedicated` → **Add mapper → By
    configuration → User Property**, tri mapper-a (istog oblika kao u Koraku 4):
 
 | Name | User Property | SAML Attribute Name | Name format |
@@ -542,8 +543,8 @@ Primijetiti da na RTI Web app-u niko ne moze da pozove API na dnu stranice posto
 
 Korak 2 je već uvezao LDAP grupu `api-access` u RTI. Sada je izložite u token-u:
 
-1. Realm **rti** → **Clients** → `webapp-rti-oauth2` → **Client scopes** →
-   `webapp-rti-oauth2-dedicated` → **Add mapper → By configuration → Group Membership**.
+1. Realm **rti** → **Clients** → `webapp-rti-oauth2-1` → **Client scopes** →
+   `webapp-rti-oauth2-1-dedicated` → **Add mapper → By configuration → Group Membership**.
 
 | Polje | Vrijednost |
 |---|---|
@@ -618,8 +619,9 @@ kao za native korisnika.
 ## Opciono — Više kopija web-aplikacija (SSO demo)
 
 Pokrenite dodatne identične kopije svake web-aplikacije za prikaz jedinstvene
-prijave (SSO). Svaka kopija je **isti** klijent na svom portu, pa se prijava na
-jednu prenosi na ostale.
+prijave (SSO). Svaka instanca ima **zaseban Keycloak klijent**, ali svi klijenti
+koriste isti domen i njegovu SSO sesiju, pa se prijava na jednu instancu prenosi
+na ostale bez ponovnog unosa kredencijala.
 
 - RTI (OIDC): osnovna `http://rti1.localhost:3000`, kopije `rti2.localhost:3001`, `rti3.localhost:3002`, …
 - SI (SAML): osnovna `http://si1.localhost:4000`, kopije `si2.localhost:4001`, `si3.localhost:4002`, …
@@ -640,26 +642,30 @@ Možete i podesiti `WEBAPP_RTI_COPIES` / `WEBAPP_SI_COPIES` u `.env` i pokrenuti
 skriptu bez argumenata. `1` = samo osnovna aplikacija. Ovo dira samo Docker
 Compose, pa je isto u ručnom i preconfigured režimu.
 
-### 2. Dodavanje URL-ova kopija u admin konzoli (ručni režim)
+### 2. Kreiranje klijenata za kopije u admin konzoli (ručni režim)
 
-Preconfigured režim ovo registruje umjesto vas; u ručnom režimu dodajte ručno.
+Preconfigured režim kreira zaseban klijent za svaku instancu. U ručnom režimu
+uradite isto za svaki broj `N` od `2` do izabranog ukupnog broja instanci.
 
-**Realm `rti` → Clients → `webapp-rti-oauth2`:**
+**RTI (OIDC), za svaku instancu `N`:**
 
-1. **Settings → Valid redirect URIs** — dodajte po jedan po kopiji:
-   `http://rti2.localhost:3001/*`, `http://rti3.localhost:3002/*`, … (zadržite
-   `http://rti1.localhost:3000/*`).
-2. **Web origins** — dodajte `http://rti2.localhost:3001`, `http://rti3.localhost:3002`, ….
-3. **Settings/Logout → Valid post logout redirect URIs** — postavite na `+`
-   (ponovo koristi redirect URI-jeve) ili dodajte svaki `http://rtiN.localhost:<port>/*`.
-4. **Save**.
+1. Ponovite **Korak 5a** i kreirajte klijent `webapp-rti-oauth2-N`.
+2. Koristite port `3000 + N - 1`: za `N=2` to su redirect URI
+   `http://rti2.localhost:3001/*` i web origin `http://rti2.localhost:3001`.
+3. Na dedicated scope-u `webapp-rti-oauth2-N-dedicated` dodajte audience mapper
+   iz Koraka 5a i `groups` mapper iz Koraka 6a. Oba mappera su potrebna da ta
+   instanca može pozivati API.
 
-**Realm `si` → Clients → `webapp-si-saml` → Settings → Valid redirect URIs** —
-dodajte i ACS i SLS unos po portu kopije (zadržite osnovne):
-`http://si2.localhost:4001/saml/acs`, `http://si2.localhost:4001/saml/sls`, … pa **Save**.
+**SI (SAML), za svaku instancu `N`:**
 
-> SAML entityID ostaje `webapp-si-saml`; svaka kopija šalje svoj ACS URL, koji
-> Keycloak provjerava u odnosu na ove Valid redirect URIs.
+1. Ponovite **Korak 5b** i kreirajte klijent, odnosno SAML entityID,
+   `webapp-si-saml-N`.
+2. Koristite port `4000 + N - 1`: za `N=2` postavite ACS
+   `http://si2.localhost:4001/saml/acs` i SLS
+   `http://si2.localhost:4001/saml/sls`, uključujući oba URL-a u **Valid redirect
+   URIs** i odgovarajuća ACS/SLS polja.
+3. Na `webapp-si-saml-N-dedicated` dodajte sva tri property mapper-a iz Koraka
+   5b (`email`, `firstName`, `lastName`).
 
 ### Provjera
 

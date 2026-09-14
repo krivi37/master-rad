@@ -22,7 +22,7 @@ Ključne činjenice koje oblikuju ove korake:
   **SAML** povjerenje = *SI korisnici se prijavljuju na RTI* (RTI vjeruje SI-ju).
 - API **nije** Keycloak klijent — on je OAuth 2.0 *resource server*. „Podešava se“
   dodavanjem **audience mapper**-a (`oauth2-api`) i **groups** claim-a na klijent
-  `webapp-rti-oauth2` kako bi API mogao da ih validira.
+  svake instance (`webapp-rti-oauth2-N`) kako bi API mogao da ih validira.
 - Korak 6 ima **native-RTI** putanju i **federated-SI** putanju; obje su potrebne.
 
 Sve komande ispod se izvršavaju iz direktorijuma projekta u PowerShell-u.
@@ -72,8 +72,8 @@ docker compose up -d --wait api webapp-rti-oauth2 webapp-si-saml-frontend
 
 > **Savjet — jedna komanda podiže cijeli lab.** Cross-platform startup skripta
 > takođe generiše compose override za SSO demo. Pokrenite `./lab-up.ps1 1 1`
-> (Windows) ili `./lab-up.sh 1 1` (Linux/macOS/Git Bash) da pokrenete **jednu**
-> kopiju svake aplikacije — `1 1` je validno pokretanje bez kopija (upisuje
+> (Windows) ili `./lab-up.sh 1 1` (Linux/macOS/Git Bash) da pokrenete po jednu
+> osnovnu instancu svake aplikacije, bez dodatnih kopija. Vrijednost `1 1` upisuje
 > prazan override, ekvivalentno običnom `docker compose up -d --build`). Za
 > dodatne kopije, pogledajte sekciju **Opciono — Više kopija web-aplikacija
 > (SSO demo)** na kraju ovog dokumenta.
@@ -506,7 +506,9 @@ docker compose exec keycloak-si /opt/keycloak/bin/kcadm.sh create clients -r si 
 > `config.singleLogoutServiceUrl=` + `config.postBindingLogout=false` (saml-si);
 > gubite cross-realm SLO ali odjava svake aplikacije i dalje radi. U preconfigured
 > režimu koristite `KC_FEDERATION_LOGOUT_PROPAGATION` u `.env`
-> (`off` = Opcija A podrazumijevano, `on` = Opcija B). Vidjeti `ManualSetupPortal.sr.md` §3c.
+> (`off` = Opcija A, `on` = Opcija B). Dostavljeni `.env.example` koristi `on`;
+> ako promjenljiva nije zadata, Compose koristi `off`. Vidjeti
+> `ManualSetupPortal.sr.md` §3c.
 
 ---
 
@@ -618,17 +620,18 @@ foreach ($m in $imp) {
 
 ## Korak 5 — Podešavanje klijenata za web-aplikacije i API
 
-- **`webapp-rti-oauth2`** — javni OIDC klijent u **RTI** (Authorization Code + PKCE).
-- **`webapp-si-saml`** — SAML klijent (SP) u **SI**.
+- **`webapp-rti-oauth2-1`** — javni OIDC klijent osnovne instance u **RTI**
+  (Authorization Code + PKCE).
+- **`webapp-si-saml-1`** — SAML klijent (SP) osnovne instance u **SI**.
 - **API** — nema sopstvenog klijenta; validira `oauth2-api` audience i `groups`
-  claim koje RTI upisuje u `webapp-rti-oauth2` access token-e (dodato ovje kao
-  mapperi; strana sa `groups` vrednošću je Korak 6).
+  claim koje RTI upisuje u access token svake `webapp-rti-oauth2-N` instance
+  (audience mapper se dodaje ovdje, a `groups` mapper u Koraku 6).
 
-### 5a — OIDC klijent `webapp-rti-oauth2` (RTI) + API audience mapper
+### 5a — OIDC klijent `webapp-rti-oauth2-1` (RTI) + API audience mapper
 
 ```powershell
 docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh create clients -r rti `
-  -s clientId=webapp-rti-oauth2 -s enabled=true -s protocol=openid-connect `
+  -s clientId=webapp-rti-oauth2-1 -s enabled=true -s protocol=openid-connect `
   -s publicClient=true -s standardFlowEnabled=true -s directAccessGrantsEnabled=false `
   -s 'redirectUris=["http://rti1.localhost:3000/*"]' `
   -s 'webOrigins=["http://rti1.localhost:3000"]' `
@@ -637,7 +640,7 @@ docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh create clients -r rt
 
 # Dohvati UUID klijenta za njegove mappere
 $appUuid = (docker compose exec -T keycloak-rti /opt/keycloak/bin/kcadm.sh `
-  get clients -r rti -q clientId=webapp-rti-oauth2 --fields id --format csv --noquotes).Trim()
+  get clients -r rti -q clientId=webapp-rti-oauth2-1 --fields id --format csv --noquotes).Trim()
 
 # Audience mapper: upiši "oauth2-api" u access token da bi ga API prihvatio
 docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh `
@@ -652,13 +655,13 @@ docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh `
 `groups` membership mapper na ovom istom klijentu je u **Koraku 6** (to je
 native-RTI polovina API autorizacije).
 
-### 5b — SAML klijent `webapp-si-saml` (SI) + njegovi property mapperi
+### 5b — SAML klijent `webapp-si-saml-1` (SI) + njegovi property mapperi
 
 ```powershell
 docker compose exec keycloak-si /opt/keycloak/bin/kcadm.sh create clients -r si `
-  -s clientId=webapp-si-saml -s name="Web Application B (SAML SP)" `
+  -s clientId=webapp-si-saml-1 -s name="Web Application B (SAML SP)" `
   -s enabled=true -s protocol=saml -s frontchannelLogout=true `
-  -s 'redirectUris=["http://si1.localhost:4000/saml/acs"]' `
+  -s 'redirectUris=["http://si1.localhost:4000/saml/acs","http://si1.localhost:4000/saml/sls"]' `
   -s 'attributes."saml.authnstatement"=true' `
   -s 'attributes."saml.server.signature"=true' `
   -s 'attributes."saml.assertion.signature"=true' `
@@ -674,7 +677,7 @@ docker compose exec keycloak-si /opt/keycloak/bin/kcadm.sh create clients -r si 
 
 # Emituj email/firstName/lastName ka SP-u da welcome prikaz ima atribute
 $appUuid = (docker compose exec -T keycloak-si /opt/keycloak/bin/kcadm.sh `
-  get clients -r si -q clientId=webapp-si-saml --fields id --format csv --noquotes).Trim()
+  get clients -r si -q clientId=webapp-si-saml-1 --fields id --format csv --noquotes).Trim()
 
 foreach ($m in @(@('email','email'), @('firstName','firstName'), @('lastName','lastName'))) {
   docker compose exec keycloak-si /opt/keycloak/bin/kcadm.sh `
@@ -702,14 +705,14 @@ API prihvata token samo kada nosi audience `oauth2-api` **i** `groups` claim koj
 sadrži `api-access`. To mora da radi za **native RTI korisnike** i za **korisnike
 federisane iz SI** — dvije odvojene putanje.
 
-### 6a — RTI korisnici: emitovanje `groups` claim-a na `webapp-rti-oauth2`
+### 6a — RTI korisnici: emitovanje `groups` claim-a na `webapp-rti-oauth2-1`
 
 LDAP group mapper iz Koraka 2 je već uvezao `api-access` u RTI. Sada dodajte
 group-membership mapper na klijent da bi bio prisutan u access tokenu:
 
 ```powershell
 $appUuid = (docker compose exec -T keycloak-rti /opt/keycloak/bin/kcadm.sh `
-  get clients -r rti -q clientId=webapp-rti-oauth2 --fields id --format csv --noquotes).Trim()
+  get clients -r rti -q clientId=webapp-rti-oauth2-1 --fields id --format csv --noquotes).Trim()
 
 docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh `
   create "clients/$appUuid/protocol-mappers/models" -r rti `
@@ -783,7 +786,7 @@ u access token-ima za federisane prijave.
 ## Provjera
 
 ```powershell
-# Native RTI korisnik sa pristupom API-ju (iz webapp-rti-oauth2 na http://rti1.localhost:3000)
+# Native RTI korisnik sa pristupom API-ju (iz webapp-rti-oauth2-1 na http://rti1.localhost:3000)
 #   prijava kao miroslav / Miroslav123!  -> Protected API panel vraća 200
 #
 # Federisani SI korisnik preko SAML-a u RTI:
@@ -811,8 +814,9 @@ docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh get identity-provide
 ## Opciono — Više kopija web-aplikacija (SSO demo)
 
 Za demonstraciju jedinstvene prijave (SSO) možete pokrenuti dodatne identične
-kopije svake web-aplikacije. Svaka kopija je **isti** Keycloak klijent na svom
-portu, pa prijava na jednu automatski prijavljuje na ostale.
+kopije svake web-aplikacije. Svaka instanca ima **zaseban Keycloak klijent**, ali
+svi klijenti koriste isti realm i njegovu SSO sesiju, pa prijava na jednu
+instancu automatski prijavljuje korisnika na ostale.
 
 - RTI (OIDC SPA): osnovna `http://rti1.localhost:3000`, kopije `rti2.localhost:3001`, `rti3.localhost:3002`, …
 - SI (SAML app): osnovna `http://si1.localhost:4000`, kopije `si2.localhost:4001`, `si3.localhost:4002`, …
@@ -832,40 +836,36 @@ pokreće `docker compose up`:
 
 Možete i podesiti `WEBAPP_RTI_COPIES` / `WEBAPP_SI_COPIES` u `.env` i pokrenuti
 skriptu bez argumenata. Broj `1` = samo osnovna aplikacija. Ovaj korak je isti u
-ručnom i u preconfigured režimu — dira samo Docker Compose, ne Keycloak.
+ručnom i u preconfigured režimu. Generator pravi samo dodatne Compose servise;
+Keycloak klijente pravi `keycloak-init` u preconfigured režimu ili vi u ručnom.
 
-### 2. Registracija URL-ova kopija na zajedničkim klijentima (ručni režim)
+### 2. Kreiranje zasebnih klijenata za kopije (ručni režim)
 
-U **preconfigured** režimu `keycloak-init` ovo registruje automatski. U **ručnom**
-režimu dodajte ih ručno — kao što ste registrovali osnovni klijent u Koraku 5.
-`update` zamjenjuje cijelu listu, pa uključite i osnovne URL-ove.
+U **preconfigured** režimu `keycloak-init` automatski kreira po jedan OIDC/SAML
+klijent za svaku instancu. U **ručnom** režimu ponovite odgovarajuće blokove iz
+Koraka 5 i 6 za svaki broj `N` od `2` do izabranog ukupnog broja instanci.
 
-**OIDC — `webapp-rti-oauth2` (realm `rti`)** — jedan redirect URI + web origin po
-portu kopije; `+` znači ponovno korišćenje redirect URI-jeva za odjavu:
+Koristite sljedeće zamjene:
 
-```powershell
-$appUuid = (docker compose exec -T keycloak-rti /opt/keycloak/bin/kcadm.sh `
-  get clients -r rti -q clientId=webapp-rti-oauth2 --fields id --format csv --noquotes).Trim()
+| Aplikacija | Client ID / entityID | Port | Redirect / ACS | SLS |
+|---|---|---|---|---|
+| RTI instanca `N` | `webapp-rti-oauth2-N` | `3000 + N - 1` | `http://rtiN.localhost:<port>/*` | nije primjenljivo |
+| SI instanca `N` | `webapp-si-saml-N` | `4000 + N - 1` | `http://siN.localhost:<port>/saml/acs` | `http://siN.localhost:<port>/saml/sls` |
 
-docker compose exec keycloak-rti /opt/keycloak/bin/kcadm.sh update "clients/$appUuid" -r rti `
-  -s 'redirectUris=["http://rti1.localhost:3000/*","http://rti2.localhost:3001/*","http://rti3.localhost:3002/*"]' `
-  -s 'webOrigins=["http://rti1.localhost:3000","http://rti2.localhost:3001","http://rti3.localhost:3002"]' `
-  -s 'attributes."post.logout.redirect.uris"=+'
-```
+Za primjer `./lab-up.ps1 3 2` dodatni klijenti su:
 
-**SAML — `webapp-si-saml` (realm `si`)** — jedan ACS + jedan SLS URL po portu kopije:
+- `webapp-rti-oauth2-2` → `http://rti2.localhost:3001/*`
+- `webapp-rti-oauth2-3` → `http://rti3.localhost:3002/*`
+- `webapp-si-saml-2` → ACS `http://si2.localhost:4001/saml/acs`, SLS
+  `http://si2.localhost:4001/saml/sls`
 
-```powershell
-$spUuid = (docker compose exec -T keycloak-si /opt/keycloak/bin/kcadm.sh `
-  get clients -r si -q clientId=webapp-si-saml --fields id --format csv --noquotes).Trim()
+Za svaku dodatnu **RTI** instancu ponovite cijeli blok iz Koraka 5a sa njenim
+client ID-jem, redirect URI-jem i web originom, a zatim blok iz Koraka 6a.
+Svaki OIDC klijent mora imati sopstvene `oauth2-api-audience` i `groups` mappere.
 
-docker compose exec keycloak-si /opt/keycloak/bin/kcadm.sh update "clients/$spUuid" -r si `
-  -s 'redirectUris=["http://si1.localhost:4000/saml/acs","http://si1.localhost:4000/saml/sls","http://si2.localhost:4001/saml/acs","http://si2.localhost:4001/saml/sls"]'
-```
-
-> Svaka SI kopija šalje svoj ACS URL u AuthnRequest-u; Keycloak ga provjerava u
-> odnosu na ove **Valid redirect URIs**, pa svaki ACS (i SLS) kopije mora biti na
-> listi. SAML entityID ostaje `webapp-si-saml` za sve kopije.
+Za svaku dodatnu **SI** instancu ponovite cijeli blok iz Koraka 5b sa njenim
+entityID-jem, ACS/SLS URL-ovima i sa oba URL-a u `redirectUris`. Svaki SAML
+klijent mora imati sopstvene `email`, `firstName` i `lastName` mappere.
 
 ### Provjera
 

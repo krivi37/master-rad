@@ -85,6 +85,7 @@ for ((j = 2; j <= SI_COPIES; j++)); do
     append "      SAML_IDP_ISSUER: \${WEBAPP_B_SAML_IDP_ISSUER:-http://si.localhost:8082/realms/si}"
     append "      SAML_ISSUER: webapp-si-saml-${j}"
     append "      SAML_ACS_URL: http://si${j}.localhost:${port}/saml/acs"
+    append "      SAML_SLS_URL: http://si${j}.localhost:${port}/saml/sls"
     append "      SAML_METADATA_URL: \${WEBAPP_B_SAML_METADATA_URL:-http://keycloak-si:8080/realms/si/protocol/saml/descriptor}"
     append "      SESSION_SECRET: \${WEBAPP_B_SESSION_SECRET:-webapp-si-saml-dev-secret}"
     append "    networks:"
