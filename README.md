@@ -10,19 +10,20 @@
   a. LAB_MODE=preconfigured
   b. Edit passwords for LDAP_RTI_ADMIN_PASSWORD, LDAP_SI_ADMIN_PASSWORD, KEYCLOAK_ADMIN_PASSWORD and KEYCLOAK_LDAP_BIND_PASSWORD
 4. Start Docker Desktop or Docker service
-5. From the root folder execute: docker compose up -d --wait api webapp-rti-oauth2 webapp-si-saml-frontend
+5. From the root folder execute the lab-up script (lab-up.sh for Linux, or lab-up.ps1 for Windows) with parameters which represent number of copies of each web-app, for example "./lab-up.sh 2 2"
 
 Now you can connect to various endpoints:
 1. http://rti.localhost:8081 - Keycloak instance for RTI realm - use KEYCLOAK admin credentials for logging in
 2. http://si.localhost:8082 - Same but for SI realm
 3. http://rti.localhost:8081/realms/rti/account and  http://si.localhost:8082/realms/si/account - here you can login using credentials from non-admin users - you can find each user in user-credentials.md
-4. http://localhost:3000 - RTI webapp which is set up as an OAuth2 and OIDC client. When logging in you can use both realms due to federation. After logging in,
+4. http://rti1.localhost:3000 - RTI webapp which is set up as an OAuth2 and OIDC client. When logging in you can use both realms due to federation. After logging in,
    the landing page will show the JWT token. Also, at the bottom of the page you can invoke an API call to the server which is protected by OAuth2. By default, the only users
    who can access the api are those who belong to the api-access group. A group mapping is set up from SI realm to RTI to allow SI users to also access the API if they are in the
    SI realm's api-access group
-5. http://localhost:4000 - SI webapp which is set up as a SAML client. You can also use both realms to login due to federation. The landing page after login shows SAML token info.
+5. http://si1.localhost:4000 - SI webapp which is set up as a SAML client. You can also use both realms to login due to federation. The landing page after login shows SAML token info.
    Since this web app also has a small backend, the frontend exposes 2 Log Out buttons - one for local client log out and the other for destroying the SAML session which invokes
    the API call on the backend app
+6. If using multiple apps, you can access them by going to addresses made like this: http://rti<n>.localhost:300<n-1> and http://si<n>.localhost:400<n-1> (e.g. http://rti2.localhost:3001)
 
 # Manual mode
 1. Edit the env file: LAB_MODE=manual
